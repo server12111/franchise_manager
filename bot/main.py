@@ -36,7 +36,7 @@ async def run_bot():
     running = [f for f in franchises if f.status == "running"]
     if running:
         logger.info(f"Восстанавливаем {len(running)} запущенных ботов...")
-        pm.restore_running(running)
+        await pm.restore_running(running)
 
     @dp.errors()
     async def error_handler(event: ErrorEvent):

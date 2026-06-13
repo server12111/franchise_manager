@@ -158,7 +158,7 @@ async def process_bot_token(message: Message, state: FSMContext, db: Database, p
     franchise = await db.create_franchise(user.id, token, username, name, instance_dir)
     await state.clear()
 
-    ok_start = pm.start(franchise.id, token, instance_dir, message.from_user.id, float(min_price))
+    ok_start = await pm.start(franchise.id, token, instance_dir, message.from_user.id, float(min_price))
     if ok_start:
         await db.update_franchise_status(franchise.id, "running", pm.get_pid(franchise.id))
         await status_msg.edit_text(
@@ -194,8 +194,8 @@ async def cb_start_bot(callback: CallbackQuery, db: Database, pm: ProcessManager
     price = round(base_30d * (1 + franchise.markup_percent / 100), 2)
     owner = await db.get_user_by_id(franchise.user_id)
     owner_id = owner.telegram_id if owner else callback.from_user.id
-    ok = pm.start(franchise.id, franchise.bot_token, franchise.instance_dir,
-                  owner_id, price, franchise.markup_percent)
+    ok = await pm.start(franchise.id, franchise.bot_token, franchise.instance_dir,
+                       owner_id, price, franchise.markup_percent)
     if ok:
         await db.update_franchise_status(franchise.id, "running", pm.get_pid(franchise.id))
         await callback.answer("✅ Бот запущен")
@@ -212,7 +212,7 @@ async def cb_stop_bot(callback: CallbackQuery, db: Database, pm: ProcessManager)
     if not franchise:
         await callback.answer("Бот не найден", show_alert=True)
         return
-    pm.stop(franchise.id, franchise.pid)
+    await pm.stop(franchise.id)
     await db.update_franchise_status(franchise.id, "stopped", None)
     await callback.answer("⏹️ Бот остановлен")
     franchise = await db.get_franchise(franchise_id)
@@ -226,13 +226,13 @@ async def cb_restart_bot(callback: CallbackQuery, db: Database, pm: ProcessManag
     if not franchise:
         await callback.answer("Бот не найден", show_alert=True)
         return
-    pm.stop(franchise.id, franchise.pid)
+    await pm.stop(franchise.id)
     base_30d = float(await db.get_setting("base_price_30d", "3.0"))
     price = round(base_30d * (1 + franchise.markup_percent / 100), 2)
     owner = await db.get_user_by_id(franchise.user_id)
     owner_id = owner.telegram_id if owner else callback.from_user.id
-    pm.start(franchise.id, franchise.bot_token, franchise.instance_dir,
-             owner_id, price, franchise.markup_percent)
+    await pm.start(franchise.id, franchise.bot_token, franchise.instance_dir,
+                   owner_id, price, franchise.markup_percent)
     await db.update_franchise_status(franchise.id, "running", pm.get_pid(franchise.id))
     await callback.answer("🔄 Бот перезапущен")
     franchise = await db.get_franchise(franchise_id)
@@ -294,9 +294,9 @@ async def process_markup(message: Message, state: FSMContext, db: Database, pm: 
     await _sync_prices_to_instance_db(franchise.instance_dir, price_7d, price_30d)
 
     if franchise.status == "running":
-        pm.stop(franchise.id, franchise.pid)
-        pm.start(franchise.id, franchise.bot_token, franchise.instance_dir,
-                 message.from_user.id, price_30d, markup)
+        await pm.stop(franchise.id)
+        await pm.start(franchise.id, franchise.bot_token, franchise.instance_dir,
+                       message.from_user.id, price_30d, markup)
         await db.update_franchise_status(franchise.id, "running", pm.get_pid(franchise.id))
 
     franchise = await db.get_franchise(franchise_id)
@@ -338,7 +338,7 @@ async def cb_confirm_delete_bot(callback: CallbackQuery, db: Database, pm: Proce
     if not franchise:
         await callback.answer("Бот не найден", show_alert=True)
         return
-    pm.stop(franchise.id, franchise.pid)
+    await pm.stop(franchise.id)
     await db.delete_franchise(franchise_id)
     user = await db.get_or_create_user(callback.from_user.id, callback.from_user.username)
     franchises = await db.get_user_franchises(user.id)

@@ -1,6 +1,12 @@
 import asyncio
 import logging
+import os
 import sys
+
+# Allow running as `python bot/main.py` directly (bothost.ru style)
+if __name__ == "__main__" and __package__ is None:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    __package__ = "bot"
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
